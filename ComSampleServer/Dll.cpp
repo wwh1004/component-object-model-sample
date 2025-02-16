@@ -7,10 +7,7 @@
 
 #include <shlwapi.h>
 #include <initguid.h>
-#include "classfactory.h"
-#include "dll.h"
 #include "ComSampleServerGuids.h"
-#include "ComSampleServerCreateInstances.h"
 
 const int c_nExpectedGuidStringLength = 39;
 
@@ -27,7 +24,6 @@ struct CLASS_INFO
     PCWSTR              pwszName;
     PCWSTR              pwszThreadModel;
     PCWSTR              pwszAppId; // The AppId of the host. If you do not want this object to an out-of-proc component, pass an empty string here (L"").
-    PFNCREATEINSTANCE   pfnCreateInstance;    
 };
 
 //  This is all the classes that are supported by this dll. 
@@ -37,44 +33,35 @@ CLASS_INFO   g_Classes[] =
         CLSID_CComServerTest,
         L"COM Server Test",
         L"Both",
-        APPID_LOCALSERVER,
-        CComServerTest_CreateInstance
+        APPID_LOCALSERVER
     },
 };
 
 //  Global variables that help implement IClassFactory.
-LONG      g_cServerLocks;
-LONG      g_cRefDll;
 HINSTANCE g_hInstance;
+BOOL g_bRegistred = FALSE;
 
-STDAPI DllGetClassObject(__in REFCLSID rclsid,
-                         __in REFIID riid,
-                         __deref_out void **ppv)
+#pragma region COM server boilerplate
+HRESULT WINAPI DllCanUnloadNow()
 {
-    HRESULT hr = (ppv != nullptr) ? S_OK : E_INVALIDARG;
-    if (SUCCEEDED(hr))
+    return Module<OutOfProc>::GetModule().Terminate() ? S_OK : S_FALSE;
+}
+
+STDAPI DllGetClassObject(_In_ REFCLSID rclsid, _In_ REFIID riid, _Outptr_ LPVOID FAR* ppv)
+{
+    if (!g_bRegistred)
     {
-        //  Loop through the global object table for matching CLSID, 
-        //  then create the class factory instance corresponding to its create function.
-        hr = CLASS_E_CLASSNOTAVAILABLE;
-        bool fFound = false;
-        for (int i = 0; ((i < ARRAYSIZE(g_Classes)) && (!fFound)); ++i)
+        HRESULT hr = Module<OutOfProc>::GetModule().RegisterObjects(nullptr);
+        if (FAILED(hr))
         {
-            if (rclsid == g_Classes[i].rclsid)
-            {
-                hr = CClassFactory_CreateInstance(g_Classes[i].pfnCreateInstance, riid, ppv);
-                fFound = true;
-            }
+            return hr;
         }
+        g_bRegistred = TRUE;
     }
 
-    return hr;
+    return Module<OutOfProc>::GetModule().GetClassObject(rclsid, riid, ppv);
 }
-
-STDAPI DllCanUnloadNow()
-{
-    return ((0 == g_cServerLocks) && (0 == g_cRefDll)) ? S_OK : S_FALSE;
-}
+#pragma endregion
 
 // Structure to hold values for registration.
 struct REGSTRUCT
@@ -306,11 +293,28 @@ STDAPI DllUnregisterServer()
 // Entry point for the DLL.
 BOOL APIENTRY DllMain(__in HINSTANCE hModule, __in DWORD  dwReason, __in_opt LPVOID /* lpReserved */)
 {
-    if (DLL_PROCESS_ATTACH == dwReason)
+    switch (dwReason)
     {
+    case DLL_PROCESS_ATTACH: {
+        AllocConsole();
+        FILE* fp;
+        freopen_s(&fp, "CONOUT$", "w", stdout);
         g_hInstance = (HINSTANCE)hModule;
         (void)DisableThreadLibraryCalls(g_hInstance);
+        Module<OutOfProc>::GetModule().Create();
+        break;
     }
-    
+
+    case DLL_PROCESS_DETACH: {
+        auto& module = Module<OutOfProc>::GetModule();
+        if (g_bRegistred)
+        {
+            module.UnregisterObjects();
+        }
+        module.Terminate();
+        break;
+    }
+    }
+
     return TRUE;
 }

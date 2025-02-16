@@ -9,76 +9,17 @@
 #include <shlwapi.h>
 #include <assert.h>
 #include <IComTest_h.h>
-#include "dll.h"
 #include "ComSampleServerGuids.h"
-#include "ComSampleServerCreateInstances.h"
 
-class CComServerTest : public IComTest
+class
+DECLSPEC_UUID("90BF1BF8-D7F6-4AF6-8FE5-6AE1A7B67E63")
+CComServerTest : public RuntimeClass<RuntimeClassFlags<ClassicCom>, IComTest, FtmBase>
 {
 public:
 
-    // IUnknown
-        
-    IFACEMETHODIMP_(ULONG) AddRef()
-    {
-        return InterlockedIncrement(&_cRef);
-    }
-    
-    IFACEMETHODIMP_(ULONG) Release()
-    {                                  
-        assert(_cRef > 0);
-        
-        ULONG cRef = InterlockedDecrement(&_cRef);
-
-        if (0 == cRef)
-        {
-            delete this;
-        }
-
-        return cRef;
-    }
-
-    IFACEMETHODIMP QueryInterface(__in REFIID riid, __out void **ppv)
-    {
-        static const QITAB qit[] =
-        {
-            QITABENT(CComServerTest, IComTest),
-            { 0 },
-        };
-
-        return QISearch(this, qit, riid, ppv);
-#if 0
-        // ANOTHER POSSIBLE IMPLEMENTATION FOR QueryInterface METHOD.
-        HRESULT hr = (ppv != nullptr) ? S_OK : E_INVALIDARG;
-        if (SUCCEEDED(hr))
-        {
-            *ppv = nullptr;
-            hr = E_NOINTERFACE;
-
-            if (__uuidof(IComTest) == riid)
-            {
-                *ppv = static_cast<IComTest*>(this);
-                hr = S_OK;
-            }
-            else if (__uuidof(IUnknown) == riid)
-            {
-                *ppv = static_cast<IUnknown*>(this);
-                hr = S_OK;
-            }
-
-            if (SUCCEEDED(hr))
-            {
-                reinterpret_cast<IUnknown*>(*ppv)->AddRef();
-            }
-        }
-
-        return hr;
-#endif
-    }
-
     // IComTest
 
-    IFACEMETHODIMP WhoAmI(_Out_ LPWSTR *ppwszWhoAmI)
+    IFACEMETHOD(WhoAmI)(_Out_ LPWSTR* ppwszWhoAmI)
     {
         HRESULT hr = (ppwszWhoAmI != nullptr) ? S_OK : E_INVALIDARG;
         if (SUCCEEDED(hr))
@@ -100,6 +41,8 @@ public:
                     hr = StringCchPrintfW(pwszMessage, cchMessagePlusTerminatingNul, L"%s%s", pwszMessagePreface, wszProcessName);
                     if (SUCCEEDED(hr))
                     {
+						wprintf(L"%s\n", pwszMessage);
+
                         hr = SHStrDupW(pwszMessage, ppwszWhoAmI);
                     }
 
@@ -110,37 +53,7 @@ public:
         
         return hr;
     }
-    
-
-public:
-
-    CComServerTest() : _cRef(1)
-    {
-        InterlockedIncrement(&g_cRefDll); // g_cRefDll++;
-    }
-
-private:
-
-    LONG _cRef;
-    
-    ~CComServerTest(void)
-    {
-        InterlockedDecrement(&g_cRefDll); // g_cRefDll--;
-    }    
 };
-//_____________________________________________________________________________
 
-//  Creation function
-HRESULT CComServerTest_CreateInstance(__in REFIID riid, __out void **ppv)
-{
-    HRESULT hr = E_OUTOFMEMORY;
-    CComServerTest *pInstance = new CComServerTest();
-    if (pInstance != nullptr)
-    {
-        hr = pInstance->QueryInterface(riid, ppv);
-        pInstance->Release();
-    }
-
-    return hr;
-}
+CoCreatableClass(CComServerTest);
 //_____________________________________________________________________________

@@ -7,3 +7,6 @@
 #include <intsafe.h>
 #include <strsafe.h>
 #include <shlwapi.h>
+#include <wrl/module.h>
+
+using namespace Microsoft::WRL;
