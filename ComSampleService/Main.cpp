@@ -5,10 +5,8 @@
 #include "pch.h"
 #pragma hdrstop
 #include <initguid.h>
-#include "ClassFactory.h"
 #include "Infrastructure.h"
 #include "ComSampleServiceGuids.h"
-#include "ComSampleServiceCreateInstances.h"
 
 //  Every class in this exe should also add an entry of the following structure
 //  into the global table. The the code in this file will take care of the
@@ -17,7 +15,6 @@ struct CLASS_INFO
 {
     REFCLSID            rclsid;
     PCWSTR              pszName;
-    PFNCREATEINSTANCE   pfnCreateInstance;
     IUnknown*           pUnknown;   // Save the class factory pointer when exe starts
     DWORD               dwRegister; // Save the registration cookie for this class
 };
@@ -28,7 +25,6 @@ CLASS_INFO   g_Classes[] =
     {
         CLSID_CComServiceTest,
         L"COM Test Service Object",
-        CComServiceTest_CreateInstance,
         nullptr,
         0
     },
@@ -38,31 +34,21 @@ CLASS_INFO   g_Classes[] =
 //  This is needed for the exe to tell COM that we are ready to serve client calls.
 HRESULT StartFactories()
 {
-    HRESULT hr = S_OK;
-    for (int i = 0; (i < ARRAYSIZE(g_Classes)) && SUCCEEDED(hr); ++i)
-    {        
-        hr = CClassFactory_CreateInstance(g_Classes[i].pfnCreateInstance,
-                                          IID_IUnknown,
-                                          (LPVOID*) &g_Classes[i].pUnknown);
-        if (SUCCEEDED(hr))
-        {
-            hr = CoRegisterClassObject(g_Classes[i].rclsid,
-                                       g_Classes[i].pUnknown,
-                                       CLSCTX_LOCAL_SERVER,
-                                       REGCLS_MULTIPLEUSE,
-                                       &g_Classes[i].dwRegister);
+	OutputDebugString(L"StartFactories\n");
 
-            if (FAILED(hr))
-            {
-                g_Classes[i].pUnknown->Release();
-                g_Classes[i].pUnknown = nullptr;
-            }
-        }
-    }
+    Module<OutOfProc>::GetModule().Create();
+
+	OutputDebugString(L"StartFactories: Create, OK\n");
+
+    HRESULT hr = Module<OutOfProc>::GetModule().RegisterObjects();
+
+	WCHAR wszMessage[1024] = {};
+	StringCchPrintf(wszMessage, ARRAYSIZE(wszMessage), L"StartFactories: RegisterObjects, hr = %08X\n", hr);
+	OutputDebugString(wszMessage);
 
     if (FAILED(hr))
     {
-        (void)StopFactories();
+        StopFactories();
     }
 
     return hr; 
@@ -70,26 +56,14 @@ HRESULT StartFactories()
 
 HRESULT StopFactories()
 {
-    HRESULT hr = S_OK;
-    for (int i = 0; i < ARRAYSIZE(g_Classes); ++i)
-    {        
-        if (g_Classes[i].dwRegister != 0)
-        {
-            HRESULT hrTemp = CoRevokeClassObject(g_Classes[i].dwRegister);
-            if (FAILED(hrTemp))
-            {
-                hr = hrTemp;
-            }
-        }
+    HRESULT hr = Module<OutOfProc>::GetModule().UnregisterObjects();
 
-        if (g_Classes[i].pUnknown != nullptr)
-        {
-            g_Classes[i].pUnknown->Release();
-            g_Classes[i].pUnknown = nullptr;
-        }
+    if (SUCCEEDED(hr))
+    {
+        Module<OutOfProc>::GetModule().Terminate();
     }
 
-    return hr; 
+    return hr;
 }
 
 //  Unregisters all the stuff we have registered.

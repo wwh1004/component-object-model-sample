@@ -5,75 +5,14 @@
 #include "pch.h"
 #pragma hdrstop
 
-#include <objbase.h>
-#include <shlwapi.h>
-#include <assert.h>
 #include <IComTest_h.h>
 #include "ComSampleServiceGuids.h"
-#include "ComSampleServiceCreateInstances.h"
 
-class CComServiceTest : public IComTest
+class
+	DECLSPEC_UUID("3B6A73AC-92C2-42AC-AACA-C9A423FE0D05")
+    CComServiceTest : public RuntimeClass<RuntimeClassFlags<ClassicCom>, IComTest, FtmBase>
 {
 public:
-
-    // IUnknown
-        
-    IFACEMETHODIMP_(ULONG) AddRef()
-    {
-        return InterlockedIncrement(&_cRef);
-    }
-    
-    IFACEMETHODIMP_(ULONG) Release()
-    {                                  
-        assert(_cRef > 0);
-        
-        ULONG cRef = InterlockedDecrement(&_cRef);
-
-        if (0 == cRef)
-        {
-            delete this;
-        }
-
-        return cRef;
-    }
-
-    IFACEMETHODIMP QueryInterface(__in REFIID riid, __out void **ppv)
-    {
-        static const QITAB qit[] =
-        {
-            QITABENT(CComServiceTest, IComTest),
-            { 0 },
-        };
-
-        return QISearch(this, qit, riid, ppv);
-#if 0
-        // ANOTHER POSSIBLE IMPLEMENTATION FOR QueryInterface METHOD.
-        HRESULT hr = (ppv != nullptr) ? S_OK : E_INVALIDARG;
-        if (SUCCEEDED(hr))
-        {
-            *ppv = nullptr;
-            hr = E_NOINTERFACE;
-
-            if (__uuidof(IComTest) == riid)
-            {
-                *ppv = static_cast<IComTest*>(this);
-                hr = S_OK;
-            }
-            else if (__uuidof(IUnknown) == riid)
-            {
-                *ppv = static_cast<IUnknown*>(this);
-                hr = S_OK;
-            }
-
-            if (SUCCEEDED(hr))
-            {
-                reinterpret_cast<IUnknown*>(*ppv)->AddRef();
-            }
-        }
-
-        return hr;
-#endif
-    }
 
     // IComTest
 
@@ -109,35 +48,7 @@ public:
         
         return hr;
     }
-    
-
-public:
-
-    CComServiceTest() : _cRef(1)
-    {
-    }
-
-private:
-
-    LONG _cRef;
-    
-    ~CComServiceTest(void)
-    {
-    }
 };
-//_____________________________________________________________________________
 
-//  Creation function
-HRESULT CComServiceTest_CreateInstance(__in REFIID riid, __out void **ppv)
-{
-    HRESULT hr = E_OUTOFMEMORY;
-    CComServiceTest *pInstance = new CComServiceTest();
-    if (pInstance != nullptr)
-    {
-        hr = pInstance->QueryInterface(riid, ppv);
-        pInstance->Release();
-    }
-
-    return hr;
-}
+CoCreatableClass(CComServiceTest);
 //_____________________________________________________________________________

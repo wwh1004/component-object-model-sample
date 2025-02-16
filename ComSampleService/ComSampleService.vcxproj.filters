@@ -15,9 +15,6 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="ClassFactory.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="Register.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -32,16 +29,10 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="ClassFactory.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="pch.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Infrastructure.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="ComSampleServiceCreateInstances.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="ComSampleServiceGuids.h">
