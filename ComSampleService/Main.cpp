@@ -34,33 +34,50 @@ CLASS_INFO   g_Classes[] =
 //  This is needed for the exe to tell COM that we are ready to serve client calls.
 HRESULT StartFactories()
 {
-	OutputDebugString(L"StartFactories\n");
+    OutputDebugString(L"StartFactories\n");
 
-    Module<OutOfProc>::GetModule().Create();
+    auto& module = Module<OutOfProc>::GetModule();
+    HRESULT hr = module.RegisterObjects();
 
-	OutputDebugString(L"StartFactories: Create, OK\n");
-
-    HRESULT hr = Module<OutOfProc>::GetModule().RegisterObjects();
-
-	WCHAR wszMessage[1024] = {};
-	StringCchPrintf(wszMessage, ARRAYSIZE(wszMessage), L"StartFactories: RegisterObjects, hr = %08X\n", hr);
-	OutputDebugString(wszMessage);
+    WCHAR wszMessage[1024] = {};
+    StringCchPrintf(wszMessage, ARRAYSIZE(wszMessage), L"StartFactories: RegisterObjects, hr = %08X\n", hr);
+    OutputDebugString(wszMessage);
 
     if (FAILED(hr))
     {
-        StopFactories();
+        if (SUCCEEDED(module.UnregisterObjects()))
+        {
+            module.Terminate();
+        }
+        return hr;
     }
 
-    return hr; 
+    module.IncrementObjectCount();
+
+    OutputDebugString(L"StartFactories: IncrementObjectCount\n");
+
+    return hr;
 }
 
 HRESULT StopFactories()
 {
-    HRESULT hr = Module<OutOfProc>::GetModule().UnregisterObjects();
+    OutputDebugString(L"StopFactories\n");
+
+    auto& module = Module<OutOfProc>::GetModule();
+
+    module.DecrementObjectCount();
+
+    OutputDebugString(L"StopFactories: DecrementObjectCount\n");
+
+    HRESULT hr = module.UnregisterObjects();
+
+    WCHAR wszMessage[1024] = {};
+    StringCchPrintf(wszMessage, ARRAYSIZE(wszMessage), L"StopFactories: UnregisterObjects, hr = %08X\n", hr);
+    OutputDebugString(wszMessage);
 
     if (SUCCEEDED(hr))
     {
-        Module<OutOfProc>::GetModule().Terminate();
+        module.Terminate();
     }
 
     return hr;
@@ -209,6 +226,10 @@ int __cdecl wmain(int argc, __in wchar_t * argv [])
     // Ask SCM to start our service.
     if (fStartService)
     {
+        Module<OutOfProc>::GetModule().Create();
+
+        OutputDebugString(L"Module<OutOfProc>::GetModule().Create(), OK\n");
+
         SERVICE_TABLE_ENTRY rgServiceTable[2] = {0};   // Only need 1 entry and then the trailing nullptr.
         rgServiceTable[0].lpServiceName = SERVICE_NAME;
         rgServiceTable[0].lpServiceProc = (LPSERVICE_MAIN_FUNCTION)ServiceMain;
